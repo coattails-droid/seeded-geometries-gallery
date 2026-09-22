@@ -798,7 +798,7 @@
   // The soft cell-centered circles take their layer's tint too, at wash alpha.
   // Accent dots, texture deck, and background are untouched.
   // Tuning knobs: DENSITY_MODULES, LAYER_DIM, LAYER_TINT, ORIENT_CW, ZOOM,
-  // CIRCLE_R, TRI_SUBDIV, the stroke width divisors in drawWelded / drawAccentDots (S/1240,
+  // CIRCLE_R, TRI_SUBDIV, STIPPLE_DOT, STIPPLE_PITCH, the stroke width divisors in drawWelded / drawAccentDots (S/1240,
   // size/640 in the wave-tile deck), and the shatter
   // system in weldedSim (shard flight magnitude, spin, envelope timing,
   // radial delay spread).
@@ -809,6 +809,13 @@
   const LAYER_ANGLES = [ORIENT_CW, ORIENT_CW + Math.PI / 6, ORIENT_CW + Math.PI / 3];
   const LAYER_DIM = [0.66, 0.66, 0.66];
   const LAYER_TINT = ["#9d4edd", "#06d6a0", "#ffbe0b"];
+  // Stipple: every line in the composition is drawn as a dotted line — dots
+  // of diameter STIPPLE_DOT × lineWidth, spaced STIPPLE_PITCH × lineWidth
+  // center-to-center. Dots are placed at fixed fractions along each edge in
+  // the shard's local frame, so they ride the shatter without swimming.
+  // Tuning knobs: STIPPLE_DOT, STIPPLE_PITCH.
+  const STIPPLE_DOT = 1.7;
+  const STIPPLE_PITCH = 4.2;
   // Zoom: the composition is drawn ZOOM× about the canvas center and cropped
   // by the frame — fewer, larger modules on screen, and every motion reads
   // larger too. Tuned so the lattice vertices land on the frame's edge
@@ -1322,27 +1329,47 @@
   // outward, so the lattice obliterates into flying, extending pieces and
   // reconfigures back into place. Because every shard's envelope is
   // periodic in the loop phase, the animation loops seamlessly.
-  function buildShardPath(ctx, G, par, list, shardXf, parIdx) {
+  // Shard-local transform for one parent: rotate about its centroid by tr,
+  // stretch k about it, translate (dx, dy). Null when the shard is at rest
+  // (no transform) — points pass through unchanged.
+  function shardXform(par, tr) {
+    if (!tr) return null;
+    return { cx: par.cx, cy: par.cy, cos: tr.c, sin: tr.s, dx: tr.dx, dy: tr.dy, k: tr.k };
+  }
+  function xformPt(xf, x, y) {
+    if (!xf) return [x, y];
+    const ax = (x - xf.cx) * xf.k, ay = (y - xf.cy) * xf.k;
+    return [xf.cx + ax * xf.cos - ay * xf.sin + xf.dx,
+            xf.cy + ax * xf.sin + ay * xf.cos + xf.dy];
+  }
+  // Stippled linework: every edge becomes a row of dots — dot radius dotR,
+  // pitch center-to-center — placed at fixed fractions along the edge in the
+  // shard's local frame so the dots ride the shatter without swimming. The
+  // dot COUNT per edge is derived from the un-stretched length (transformed
+  // length divided by the shard's stretch k), so it never changes mid-loop:
+  // no dots pop in or out as shards fly.
+  // All dots go into the current path; the caller fills once.
+  function stippleShardPath(ctx, G, par, list, shardXf, parIdx, dotR, pitch) {
     const verts = G.verts, edges = G.edges;
     const tr = shardXf[parIdx];
-    if (!tr) {
-      for (let li = 0; li < list.length; li++) {
-        const e = edges[list[li]];
-        const A = verts[e.a], B = verts[e.b];
-        ctx.moveTo(A.x, A.y);
-        ctx.lineTo(B.x, B.y);
-      }
-      return;
-    }
-    const cx = par.cx, cy = par.cy;
-    const cos = tr.c, sin = tr.s, dx = tr.dx, dy = tr.dy, k = tr.k;
+    const xf = shardXform(par, tr);
+    const k = tr ? tr.k : 1;
     for (let li = 0; li < list.length; li++) {
       const e = edges[list[li]];
       const A = verts[e.a], B = verts[e.b];
-      const ax = (A.x - cx) * k, ay = (A.y - cy) * k;
-      const bx = (B.x - cx) * k, by = (B.y - cy) * k;
-      ctx.moveTo(cx + ax * cos - ay * sin + dx, cy + ax * sin + ay * cos + dy);
-      ctx.lineTo(cx + bx * cos - by * sin + dx, cy + bx * sin + by * cos + dy);
+      const p0 = xformPt(xf, A.x, A.y), p1 = xformPt(xf, B.x, B.y);
+      const dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+      const len = Math.sqrt(dx * dx + dy * dy) / k;
+      if (len < 1e-9) continue;
+      // len is in composition coords; the canvas draws at ZOOM×, and pitch
+      // is in canvas coords — scale up so the dot spacing matches.
+      const n = Math.max(1, Math.round(len * ZOOM / pitch));
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const x = p0[0] + dx * t, y = p0[1] + dy * t;
+        ctx.moveTo(x + dotR, y);
+        ctx.arc(x, y, dotR, 0, TAU);
+      }
     }
   }
 
@@ -1491,6 +1518,10 @@
     const verts = G.verts, edges = G.edges, parents = G.parents;
     const drawOrder = G.drawOrder, byParent = G.byParent;
     line(ctx, Math.max(0.5, strokeW));
+    // Stipple geometry from the line width: dots of diameter
+    // STIPPLE_DOT × strokeW, spaced STIPPLE_PITCH × strokeW.
+    const dotR = Math.max(0.5, strokeW) * STIPPLE_DOT / 2;
+    const pitch = Math.max(0.5, strokeW) * STIPPLE_PITCH;
 
     // Visible 9-shift offsets for a parent bbox (tile coords == canvas
     // coords in tile mode: no zoom). The margin must cover the shard's full
@@ -1527,11 +1558,11 @@
         for (let s = 0; s < shifts.length; s++) {
           ctx.save();
           ctx.translate(shifts[s][0] * wrap.W, shifts[s][1] * wrap.H);
-          ctx.strokeStyle = LAYER_TINT[par.layer];
+          ctx.fillStyle = LAYER_TINT[par.layer];
           ctx.globalAlpha = alpha[parIdx];
           ctx.beginPath();
-          buildShardPath(ctx, G, par, list, shardXf, parIdx);
-          ctx.stroke();
+          stippleShardPath(ctx, G, par, list, shardXf, parIdx, dotR, pitch);
+          ctx.fill();
           ctx.restore();
         }
       } else if (maskFn) {
@@ -1552,18 +1583,18 @@
         const lvs = Array.from(buckets.keys()).sort(function (a, b) { return a - b; });
         for (let vi = 0; vi < lvs.length; vi++) {
           const lv = lvs[vi];
-          ctx.strokeStyle = LAYER_TINT[par.layer];
+          ctx.fillStyle = LAYER_TINT[par.layer];
           ctx.globalAlpha = alpha[parIdx] * (lv + 0.5) / MASK_LEVELS;
           ctx.beginPath();
-          buildShardPath(ctx, G, par, buckets.get(lv), shardXf, parIdx);
-          ctx.stroke();
+          stippleShardPath(ctx, G, par, buckets.get(lv), shardXf, parIdx, dotR, pitch);
+          ctx.fill();
         }
       } else {
-        ctx.strokeStyle = LAYER_TINT[par.layer];
+        ctx.fillStyle = LAYER_TINT[par.layer];
         ctx.globalAlpha = alpha[parIdx];
         ctx.beginPath();
-        buildShardPath(ctx, G, par, list, shardXf, parIdx);
-        ctx.stroke();
+        stippleShardPath(ctx, G, par, list, shardXf, parIdx, dotR, pitch);
+        ctx.fill();
       }
     }
 
