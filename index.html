@@ -96,6 +96,8 @@
     html += '<a class="tokenlink" href="token.html?hash=' + hash + '">open live token &rarr;</a>';
     cap.innerHTML = html;
 
+    canvas._pieceIndex = i;
+    if (observer) observer.observe(canvas);
     card.appendChild(canvas);
     card.appendChild(cap);
     gallery.appendChild(card);
@@ -116,6 +118,35 @@
     })();
   }
 
+  // --- Seamless-loop animation (autoplay) ------------------------------------
+  var LOOP_MS = 8000; // one full loop per piece
+  var animating = false;
+  // Only animate pieces on screen — offscreen canvases skip their frames.
+  var visible = {};
+  var observer = ("IntersectionObserver" in window)
+    ? new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          visible[e.target._pieceIndex] = e.isIntersecting;
+        });
+      }, { threshold: 0.05 })
+    : null;
+  function tick(now) {
+    for (var p = 0; p < pieces.length; p++) {
+      var pc = pieces[p];
+      if (observer && !visible[pc.index]) continue;
+      // golden-ratio offset per piece so the wall doesn't pulse in lockstep;
+      // each piece still loops seamlessly on its own phase.
+      var phase = (((now / LOOP_MS) + pc.index * 0.6180339887) % 1 + 1) % 1;
+      SGArt.render(pc.canvas.getContext("2d"), SIZE, pc.hash, activeLayers(), phase);
+    }
+    requestAnimationFrame(tick);
+  }
+  function startAnimation() {
+    if (animating) return;
+    animating = true;
+    requestAnimationFrame(tick);
+  }
+
   // Boot: preload PNG decks, then render. A missing PNG never kills the page.
   var bootNote = document.createElement("p");
   bootNote.className = "note";
@@ -124,6 +155,8 @@
   SGLayers.loadLayers().then(function (decks) {
     builtinLayers = decks;
     renderAll(12);
+    // let the wall fill in, then start the loop
+    setTimeout(startAnimation, 4000);
   });
 
   document.getElementById("mint").addEventListener("click", function () { addPiece(minted++); });
