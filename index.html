@@ -24,7 +24,7 @@
   button:hover { background: #dbb845; }
   .gallery {
     max-width: 1200px; margin: 0 auto;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 28px;
   }
   figure { margin: 0; }
@@ -151,7 +151,7 @@
   gallery.appendChild(bootNote);
   SGLayers.loadLayers().then(function (decks) {
     builtinLayers = decks;
-    renderAll(12);
+    renderAll(10);
     // let the wall fill in, then start the loop
     setTimeout(startAnimation, 4000);
   });
