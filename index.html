@@ -24,7 +24,7 @@
   button:hover { background: #dbb845; }
   .gallery {
     max-width: 1200px; margin: 0 auto;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 28px;
   }
   figure { margin: 0; }
@@ -35,7 +35,6 @@
   figcaption strong { color: #e8e4d8; }
   figcaption code { color: #c9a227; font-size: 13px; }
   figcaption .rarity { color: #c9a227; }
-  figcaption .tokenlink { color: #7d9bd1; }
 </style>
 </head>
 <body>
@@ -93,7 +92,6 @@
     var html = "<strong>Token #" + i + "</strong> <code>" + hash.slice(0, 10) + "&hellip;</code><br>";
     feats.forEach(function (f) { html += f.trait_type + ": " + f.value + "<br>"; });
     html += '<span class="rarity">Rarity score: ' + score.toFixed(2) + "</span><br>";
-    html += '<a class="tokenlink" href="token.html?hash=' + hash + '">open live token &rarr;</a>';
     cap.innerHTML = html;
 
     canvas._pieceIndex = i;
