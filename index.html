@@ -64,19 +64,9 @@
 </header>
 <div class="controls">
   <button id="mint">Simulate mint</button>
-  <button id="animate">Animate</button>
   <p class="note">Demo hashes are deterministic stand-ins. A production deployment
   derives the token hash from the mint blockhash instead. Animation loops seamlessly:
   every motion is periodic in the loop phase, so the last frame flows into the first.</p>
-</div>
-<div class="controls">
-  <div id="dropzone" class="dropzone">
-    Drop your own PNG layers here to preview them on every piece
-    <input type="file" id="filepick" accept="image/png" multiple hidden>
-    <span class="dz-alt">or <button id="browse" type="button" class="linklike">browse files</button></span>
-  </div>
-  <p class="note" id="dz-note" hidden></p>
-  <button id="restore-layers" type="button" hidden>Restore built-in layers</button>
 </div>
 <div id="gallery" class="gallery"></div>
 <script src="js/bundle.min.js"></script>
@@ -92,8 +82,7 @@
   var minted = 0;
   var pieces = []; // { canvas, hash, index } for the animation loop
   var builtinLayers = null;  // decks from assets/layers/
-  var previewLayers = null;  // decks from dropped PNGs (preview only)
-  function activeLayers() { return previewLayers || builtinLayers; }
+  function activeLayers() { return builtinLayers; }
 
   var gallery = document.getElementById("gallery");
 
@@ -129,34 +118,12 @@
     // piece never blocks the wall — it fills in over a couple of seconds.
     var i = 0;
     (function step() {
-      if (playing || i >= count) return; // animation took over; stop feeding
+      if (i >= count) return;
       addPiece(minted++);
       i++;
       requestAnimationFrame(step);
     })();
   }
-
-  // --- Seamless-loop animation ---------------------------------------------
-  var LOOP_MS = 8000; // one full loop per piece
-  var playing = false;
-  var animBtn = document.getElementById("animate");
-  function tick(now) {
-    if (!playing) return;
-    for (var p = 0; p < pieces.length; p++) {
-      var pc = pieces[p];
-      // golden-ratio offset per piece so the wall doesn't pulse in lockstep;
-      // each piece still loops seamlessly on its own phase.
-      var phase = (((now / LOOP_MS) + pc.index * 0.6180339887) % 1 + 1) % 1;
-      SGArt.render(pc.canvas.getContext("2d"), SIZE, pc.hash, activeLayers(), phase);
-    }
-    requestAnimationFrame(tick);
-  }
-  animBtn.addEventListener("click", function () {
-    playing = !playing;
-    animBtn.textContent = playing ? "Pause" : "Animate";
-    if (playing) requestAnimationFrame(tick);
-    else renderAll(Math.max(minted, 12)); // freeze back on the static frame
-  });
 
   // Boot: preload PNG decks, then render. A missing PNG never kills the page.
   var bootNote = document.createElement("p");
@@ -170,63 +137,6 @@
 
   document.getElementById("mint").addEventListener("click", function () { addPiece(minted++); });
 
-  // --- Custom PNG preview --------------------------------------------------
-  var DEFAULT_PREVIEW_CFG = { blend: "multiply", alpha: [0.10, 0.22], scale: [0.9, 1.4], count: [2, 4], rotate: 0 };
-  var dz = document.getElementById("dropzone");
-  var dzNote = document.getElementById("dz-note");
-  var restoreBtn = document.getElementById("restore-layers");
-
-  function previewFiles(files) {
-    var pngs = Array.prototype.filter.call(files, function (f) { return /png$/i.test(f.type) || /\.png$/i.test(f.name); });
-    if (!pngs.length) return;
-    var loaded = [];
-    var pending = pngs.length;
-    pngs.forEach(function (f) {
-      var url = URL.createObjectURL(f);
-      var img = new Image();
-      img.onload = function () {
-        loaded.push({ img: img, cfg: Object.assign({ file: f.name }, DEFAULT_PREVIEW_CFG) });
-        if (--pending === 0) installPreview(loaded);
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); if (--pending === 0) installPreview(loaded); };
-      img.src = url;
-    });
-  }
-
-  function installPreview(entries) {
-    if (!entries.length) return;
-    // One preview deck per grid system, so every system shows your PNGs.
-    previewLayers = {};
-    Object.keys(SGLayers.LAYER_DECKS).forEach(function (key) { previewLayers[key] = entries; });
-    dzNote.hidden = false;
-    dzNote.textContent = "Previewing " + entries.length + " custom layer" + (entries.length > 1 ? "s" : "") +
-      " on every piece. To keep them, commit the PNGs to assets/layers/<system>/ and add entries to js/layers.js.";
-    restoreBtn.hidden = false;
-    renderAll(Math.max(minted, 12));
-  }
-
-  restoreBtn.addEventListener("click", function () {
-    previewLayers = null;
-    dzNote.hidden = true;
-    restoreBtn.hidden = true;
-    renderAll(Math.max(minted, 12));
-  });
-
-  dz.addEventListener("click", function (e) {
-    if (e.target.id !== "browse") document.getElementById("filepick").click();
-  });
-  document.getElementById("browse").addEventListener("click", function (e) {
-    e.stopPropagation();
-    document.getElementById("filepick").click();
-  });
-  document.getElementById("filepick").addEventListener("change", function (e) { previewFiles(e.target.files); });
-  ["dragenter", "dragover"].forEach(function (ev) {
-    dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add("over"); });
-  });
-  ["dragleave", "drop"].forEach(function (ev) {
-    dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove("over"); });
-  });
-  dz.addEventListener("drop", function (e) { previewFiles(e.dataTransfer.files); });
 })();
 </script>
 </body>
