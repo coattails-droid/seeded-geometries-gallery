@@ -53,7 +53,6 @@
   </p>
 </header>
 <div class="controls">
-  <button id="mint">Simulate mint</button>
   <p class="note">Demo hashes are deterministic stand-ins. A production deployment
   derives the token hash from the mint blockhash instead. Animation loops seamlessly:
   every motion is periodic in the loop phase, so the last frame flows into the first.</p>
@@ -156,8 +155,6 @@
     // let the wall fill in, then start the loop
     setTimeout(startAnimation, 4000);
   });
-
-  document.getElementById("mint").addEventListener("click", function () { addPiece(minted++); });
 
 })();
 </script>
