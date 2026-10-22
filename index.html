@@ -6,29 +6,29 @@
 <title>Seeded Geometries — hash-driven generative prototype</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; color: #e8ddcf; font-family: ui-monospace, Menlo, monospace;
+  body { background: #0d0708; color: #e8e2d4; font-family: 'DejaVu Sans Mono', Menlo, Consolas, 'Courier New', monospace;
          padding: 48px 24px 80px; }
   header { max-width: 1200px; margin: 0 auto 40px; }
-  h1 { font-size: 20px; letter-spacing: 0.35em; font-weight: 600; color: #c9a227; }
+  h1 { font-size: 20px; letter-spacing: 0.35em; font-weight: 600; color: #ffc46e; }
   header p { margin-top: 12px; font-size: 16px; line-height: 1.8; letter-spacing: 0.04em;
-             color: #b8a894; max-width: 720px; }
-  header code { color: #c9a227; font-size: 14px; }
+             color: #9a937f; max-width: 720px; }
+  header code { color: #ffc46e; font-size: 14px; }
   .controls { max-width: 1200px; margin: 20px auto; }
-  .note { color: #9a958a; font-size: 14px; line-height: 1.8; letter-spacing: 0.04em;
+  .note { color: #9a937f; font-size: 14px; line-height: 1.8; letter-spacing: 0.04em;
           max-width: 720px; margin: 0; }
   button {
     font-family: inherit; font-size: 15px; cursor: pointer;
-    background: #c9a227; color: #101114; border: none; border-radius: 4px;
+    background: transparent; color: #ffc46e; border: 1px solid #ffc46e; border-radius: 0;
     padding: 10px 22px;
   }
-  button:hover { background: #dbb845; }
+  button:hover { background: #ffc46e; color: #14100a; }
   a.mintbtn {
     display: inline-block; margin-top: 20px; padding: 12px 28px;
-    background: #c9a227; color: #101114; border-radius: 4px;
+    background: transparent; color: #ffc46e; border: 1px solid #ffc46e; border-radius: 0;
     font-size: 15px; letter-spacing: 0.2em; font-weight: 600;
     text-decoration: none;
   }
-  a.mintbtn:hover { background: #dbb845; }
+  a.mintbtn:hover { background: #ffc46e; color: #14100a; }
   .gallery {
     max-width: 1200px; margin: 0 auto;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -36,12 +36,12 @@
   }
   figure { margin: 0; }
   canvas { width: 100%; height: auto; display: block; background: #000;
-           border: 1px solid #1c1c1c; }
-  figcaption { font-size: 14px; color: #b9b3a4; line-height: 1.8; letter-spacing: 0.04em;
+           border: 1px solid #3a362c; }
+  figcaption { font-size: 14px; color: #9a937f; line-height: 1.8; letter-spacing: 0.04em;
                margin-top: 10px; }
-  figcaption strong { color: #e8e4d8; }
-  figcaption code { color: #c9a227; font-size: 13px; }
-  figcaption .rarity { color: #c9a227; }
+  figcaption strong { color: #e8e2d4; }
+  figcaption code { color: #ffc46e; font-size: 13px; }
+  figcaption .rarity { color: #ffc46e; }
 </style>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-QFQNW5T87Y"></script>
